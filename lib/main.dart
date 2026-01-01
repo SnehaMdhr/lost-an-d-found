@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lost_n_found/app/app.dart';
 import 'package:lost_n_found/core/services/hive/hive_service.dart';
 
-void main() async{
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive (opens boxes and inserts dummy batches)
+  await HiveService().init();
 
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
@@ -17,6 +20,5 @@ void main() async{
     ),
   );
 
-  await HiveService().init();
   runApp(const ProviderScope(child: MyApp()));
 }

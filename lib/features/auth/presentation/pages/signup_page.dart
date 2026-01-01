@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lost_n_found/features/auth/presentation/state/auth_state.dart';
+import 'package:lost_n_found/features/auth/presentation/view_model/auth_view_model.dart';
 import 'package:lost_n_found/features/batch/domain/entities/batch_entity.dart';
 import 'package:lost_n_found/features/batch/presentation/state/batch_state.dart';
 import 'package:lost_n_found/features/batch/presentation/view_model/batch_viewmodel.dart';
@@ -27,7 +29,6 @@ class _SignupPageState extends ConsumerState<SignupPage> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _isLoading = false;
   bool _agreedToTerms = false;
   String? _selectedBatch;
   String _selectedCountryCode = '+977'; // Default Nepal
@@ -42,7 +43,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   ];
 
   // Mock batch data - will come from GET /api/v1/batches
-  List<BatchEntity> _batches = [];
+  // List<BatchEntity> _batches = [];
 
   @override
   void dispose() {
@@ -64,18 +65,15 @@ class _SignupPageState extends ConsumerState<SignupPage> {
     }
 
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        AppRoutes.pushReplacement(context, const DashboardPage());
-      }
+      //ya ko data lai view model ma pass garni 
+      ref.read(authViewModelProvider.notifier).register(
+          fullName: _nameController.text,
+          email: _emailController.text,
+          username: _emailController.text.trim().split("@").first,
+          password: _passwordController.text,
+          phoneNumber: "$_selectedCountryCode${_phoneController.text}",
+          batchId: _selectedBatch,
+      );
     }
   }
 
@@ -92,9 +90,22 @@ class _SignupPageState extends ConsumerState<SignupPage> {
   @override
   Widget build(BuildContext context) {
     final batchState = ref.watch(batchViewModelProvider);
-    if(batchState.status == BatchStatus.loaded){
-      _batches = batchState.batches;
-    }
+    // if(batchState.status == BatchStatus.loaded){
+    //   _batches = batchState.batches;
+    // }
+    final authState = ref.watch(authViewModelProvider);
+    
+    ref.listen<AuthState>(authViewModelProvider, (previous,next){
+      if(next.status==AuthStatus.error){
+        SnackbarUtils.showError(
+            context,
+            next.errorMessage ??"Registration failed",);
+      }else if(next.status == AuthStatus.registered){
+        SnackbarUtils.showSuccess(
+          context,
+          next.errorMessage ??"Registration successful",);
+      }
+    });
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -294,10 +305,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       hintText: 'Choose your batch',
                       prefixIcon: Icon(Icons.school_rounded),
                     ),
-                    items: _batches.map((batch) {
+                    items: batchState.batches.map((batch) {
                       return DropdownMenuItem<String>(
                         value: batch.batchId,
-                        child: Text(batch.batchName!),
+                        child: Text(batch.batchName),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -442,7 +453,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                   GradientButton(
                     text: 'Create Account',
                     onPressed: _handleSignup,
-                    isLoading: _isLoading,
+                    isLoading: authState.status==AuthStatus.loading,
                   ),
                   const SizedBox(height: 32),
 
